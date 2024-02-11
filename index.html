@@ -18,8 +18,10 @@
   <body>
     <canvas id="myCanvas" width="640" height="640"></canvas>
     <script>
+        const msBetweenFrames = 1000 / 60;
         const screenDimensions = 640;
-        const tileDimensions = screenDimensions / 16;
+        const tileCount = 16;
+        const tileDimensions = screenDimensions / tileCount;
         const canvas = document.getElementById("myCanvas");
         const ctx = canvas.getContext("2d");
 
@@ -30,13 +32,29 @@
                 this.speed = 3;
                 this.width = tileDimensions * 2;
                 this.height = tileDimensions;
+                this.delay = -1;
+                this.setDelay();
+            }
+
+            hasDelay() {
+                return this.delay > 0;
             }
 
             update() {
-                this.x -= this.speed;
-                if (this.x <= -this.width) {
-                    this.x = screenDimensions;
+                if (this.x >= screenDimensions && this.hasDelay()) {
+                    this.delay -= msBetweenFrames;
                 }
+                else {
+                    this.x -= this.speed;
+                    if (this.x <= -this.width) {
+                        this.x = screenDimensions;
+                        this.setDelay();
+                    }
+                }
+            }
+
+            setDelay() {
+                this.delay = Math.random() * 5000;
             }
 
             draw() {
@@ -69,18 +87,24 @@
         }
 
         const frog = new Frog(screenDimensions / 2, canvas.height - tileDimensions);
-        const car = new Car(screenDimensions, screenDimensions / 2);
+        let cars = [];
+        for (let i = 1; i < tileCount - 1; i++) {
+            if (Math.random() <= 0.75) {
+                const car = new Car(screenDimensions, i * tileDimensions);
+                cars.push(car);
+            }
+        }
 
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             frog.update();
-            car.update();
+            cars.forEach(car => car.update());
 
             frog.draw();
-            car.draw();
+            cars.forEach(car => car.draw());
         }
-        setInterval(gameLoop, 1000 / 60);
+        setInterval(gameLoop, msBetweenFrames);
     </script>
   </body>
 </html>
