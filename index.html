@@ -1,29 +1,361 @@
 <!doctype html>
 <html lang="en-US">
-  <head>
+<head>
     <meta charset="utf-8" />
     <title>AI Frogger</title>
     <style>
-      * {
-        padding: 0;
-        margin: 0;
-      }
-      canvas {
-        background: #eee;
-        display: block;
-        margin: 0 auto;
-      }
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        canvas {
+            background: #eee;
+            display: block;
+            margin: 0 auto;
+        }
     </style>
-  </head>
-  <body>
+</head>
+<body>
     <canvas id="myCanvas" width="640" height="640"></canvas>
-    <script>
+    <script>const screenDimensions = 640;
+
+        // ==================== NEURAL NETWORK LOGIC ====================
+
+        class NeuralNetwork {
+            constructor(inputs, hidden, outputs, showError = false, logFrequency, showSigmoidArgument = false) {
+                this._inputs = inputs;
+                this._hidden = hidden;
+                this._outputs = outputs;
+
+                this._bias0 = new Matrix(1, this._hidden);
+                this._bias1 = new Matrix(1, this._outputs);
+
+                this._weights0 = new Matrix(this._inputs, this._hidden);
+                this._weights1 = new Matrix(this._hidden, this._outputs);
+
+                this._bias0.randomWeights();
+                this._bias1.randomWeights();
+
+                this._weights0.randomWeights();
+                this._weights1.randomWeights();
+
+                this._logFrequency = logFrequency;
+                this._iteration = 0;
+
+                this._showError = showError;
+                this._showSigmoidArgument = false;
+            }
+
+            get inputs() {
+                return this._inputs;
+            }
+
+            set inputs(inputs) {
+                this._inputs = inputs;
+            }
+
+            get hidden() {
+                return this._hidden;
+            }
+
+            set hidden(hidden) {
+                this._hidden = hidden;
+            }
+
+            get bias0() {
+                return this._bias0;
+            }
+
+            set bias0(bias) {
+                this._bias0 = bias;
+            }
+
+            get bias1() {
+                return this._bias1;
+            }
+
+            set bias1(bias) {
+                this._bias1 = bias;
+            }
+
+            get weights0() {
+                return this._weights0;
+            }
+
+            set weights0(weights) {
+                this._weights0 = weights;
+            }
+
+            get weights1() {
+                return this._weights1;
+            }
+
+            set weights1(weights) {
+                this._weights1 = weights;
+            }
+
+            feedForward(inputArray) {
+                // convert input array to a matrix
+                this.inputs = Matrix.convertFromArray(inputArray);
+
+                // find the hidden values and apply the activation function
+                this.hidden = Matrix.dot(this.inputs, this.weights0);
+                this.hidden = Matrix.add(this.hidden, this.bias0); // apply bias
+                this.hidden = Matrix.map(this.hidden, x => this.sigmoid(x), this._showSigmoidArgument);
+
+                // find the output values and apply the activation function
+                let outputs = Matrix.dot(this.hidden, this.weights1);
+                outputs = Matrix.add(outputs, this.bias1); // apply bias
+                outputs = Matrix.map(outputs, x => this.sigmoid(x), this._showSigmoidArgument);
+
+                return outputs;
+            }
+
+            train(inputArray, targetArray) {
+                // feed the input data through the network
+                let outputs = this.feedForward(inputArray);
+
+                // calculate the output errors (target - output)
+                let targets = Matrix.convertFromArray(targetArray);
+                let outputErrors = Matrix.subtract(targets, outputs);
+
+                // error logs
+                if (this._showError === true) {
+                    this._iteration++;
+                    if (this._iteration % this._logFrequency === 0) {
+                        console.log("Error: " + outputErrors.data[0][0]);
+                    }
+                }
+
+                // calculate the deltas (errors * derivitive of the output)
+                let outputDerivs = Matrix.map(outputs, x => this.sigmoid(x, true), this._showSigmoidArgument);
+                let outputDeltas = Matrix.multiply(outputErrors, outputDerivs);
+
+                // calculate hidden layer errors (deltas "dot" transpose of weights1)
+                let weights1T = Matrix.transpose(this.weights1);
+                let hiddenErrors = Matrix.dot(outputDeltas, weights1T);
+
+                // calculate the hidden deltas (errors * derivitive of hidden)
+                let hiddenDerivs = Matrix.map(this.hidden, x => this.sigmoid(x, true), this._showSigmoidArgument);
+                let hiddenDeltas = Matrix.multiply(hiddenErrors, hiddenDerivs);
+
+                // update the weights (add transpose of layers "dot" deltas)
+                let hiddenT = Matrix.transpose(this.hidden);
+                this.weights1 = Matrix.add(this.weights1, Matrix.dot(hiddenT, outputDeltas));
+                let inputsT = Matrix.transpose(this.inputs);
+                this.weights0 = Matrix.add(this.weights0, Matrix.dot(inputsT, hiddenDeltas));
+
+                // update bias
+                this.bias1 = Matrix.add(this.bias1, outputDeltas);
+                this.bias0 = Matrix.add(this.bias0, hiddenDeltas);
+            }
+
+            sigmoid(x, deriv = false, showSigmoidArgument) {
+                if (showSigmoidArgument === true) {
+                    if (nn._iteration % nn._logFrequency === 0) {
+                        console.log("Sigmoid argument: " + x);
+                    }
+                }
+
+                if (deriv) {
+                    return x * (1 - x); // where x = sigmoid(x)
+                }
+                return 1 / (1 + Math.exp(-x));
+            }
+        }
+
+
+        class Matrix {
+            constructor(rows, cols, data = []) {
+                this._rows = rows;
+                this._cols = cols;
+                this._data = data;
+
+                // initialise with zeroes if no data provided
+                if (data == null || data.length == 0) {
+                    this._data = [];
+                    for (let i = 0; i < this._rows; i++) {
+                        this._data[i] = [];
+                        for (let j = 0; j < this._cols; j++) {
+                            this._data[i][j] = 0;
+                        }
+                    }
+                } else {
+                    // check data integrity
+                    if (data.length != rows || data[0].length != cols) {
+                        throw new Error("Incorrect data dimensions!");
+                    }
+                }
+            }
+
+            get rows() {
+                return this._rows;
+            }
+
+            get cols() {
+                return this._cols;
+            }
+
+            get data() {
+                return this._data;
+            }
+
+            // add two matrices
+            static add(m0, m1) {
+                Matrix.checkDimensions(m0, m1);
+                let m = new Matrix(m0.rows, m0.cols);
+                for (let i = 0; i < m.rows; i++) {
+                    for (let j = 0; j < m.cols; j++) {
+                        m.data[i][j] = m0.data[i][j] + m1.data[i][j];
+                    }
+                }
+                return m;
+            }
+
+            // check matrices have the same dimensions
+            static checkDimensions(m0, m1) {
+                if (m0.rows != m1.rows || m0.cols != m1.cols) {
+                    throw new Error("Matrices are of different dimensions!");
+                }
+            }
+
+            // convert array to a one-rowed matrix
+            static convertFromArray(arr) {
+                return new Matrix(1, arr.length, [arr]);
+            }
+
+            // dot product of two matrices
+            static dot(m0, m1) {
+                if (m0.cols != m1.rows) {
+                    throw new Error("Matrices are not \"dot\" compatible!");
+                }
+                let m = new Matrix(m0.rows, m1.cols);
+                for (let i = 0; i < m.rows; i++) {
+                    for (let j = 0; j < m.cols; j++) {
+                        let sum = 0;
+                        for (let k = 0; k < m0.cols; k++) {
+                            sum += m0.data[i][k] * m1.data[k][j];
+                        }
+                        m.data[i][j] = sum;
+                    }
+                }
+                return m;
+            }
+
+            // apply a function to each cell of the given matrix
+            static map(m0, mFunction) {
+                let m = new Matrix(m0.rows, m0.cols);
+                for (let i = 0; i < m.rows; i++) {
+                    for (let j = 0; j < m.cols; j++) {
+                        m.data[i][j] = mFunction(m0.data[i][j]);
+                    }
+                }
+                return m;
+            }
+
+            // multiply two matrices (not the dot product)
+            static multiply(m0, m1) {
+                Matrix.checkDimensions(m0, m1);
+                let m = new Matrix(m0.rows, m0.cols);
+                for (let i = 0; i < m.rows; i++) {
+                    for (let j = 0; j < m.cols; j++) {
+                        m.data[i][j] = m0.data[i][j] * m1.data[i][j];
+                    }
+                }
+                return m;
+            }
+
+            // subtract two matrices
+            static subtract(m0, m1) {
+                Matrix.checkDimensions(m0, m1);
+                let m = new Matrix(m0.rows, m0.cols);
+                for (let i = 0; i < m.rows; i++) {
+                    for (let j = 0; j < m.cols; j++) {
+                        m.data[i][j] = m0.data[i][j] - m1.data[i][j];
+                    }
+                }
+                return m;
+            }
+
+            // find the transpose of the given matrix
+            static transpose(m0) {
+                let m = new Matrix(m0.cols, m0.rows);
+                for (let i = 0; i < m0.rows; i++) {
+                    for (let j = 0; j < m0.cols; j++) {
+                        m.data[j][i] = m0.data[i][j];
+                    }
+                }
+                return m;
+            }
+
+            // apply random weights between -1 and 1
+            randomWeights() {
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = 0; j < this.cols; j++) {
+                        this.data[i][j] = Math.random() * 2 - 1;
+                    }
+                }
+            }
+        }
+
+        const inputs = 3;
+        const hidden = 50;
+        const outputs = 1;
+        const iterations = 10000;
+        const logFrequency = 1000;
+
+        const nn = new NeuralNetwork(inputs, hidden, outputs);
+
+        function lerp(a, b, t) {
+            return a + t * (b - a);
+        }
+
+        //
+        for (let i = 0; i < iterations; i++) {
+            // Generate random input data and normalize
+            //let input0 = Math.random() * screenDimensions * 1.5;
+            //let input1 = Math.random() * screenDimensions * 1.5;
+            //let input2 = Math.random() * screenDimensions * 1.5;
+
+            let input0 = lerp(-screenDimensions / 2, screenDimensions * 1.5, Math.random());
+            let input1 = lerp(-screenDimensions / 2, screenDimensions * 1.5, Math.random());
+            let input2 = lerp(-screenDimensions / 2, screenDimensions * 1.5, Math.random());
+
+            const inclinationToGoUpward = 1.5;
+            const inclinationAgainstGoingDownward = 0.25;
+            let inputValues = [
+                input0 * inclinationToGoUpward,
+                input1,
+                input2 * inclinationAgainstGoingDownward];
+            let maxValue = Math.max(...inputValues);
+            let indexOfMaxValue = inputValues.indexOf(maxValue);
+
+            // Desired output
+            let targetOutput = indexOfMaxValue / 2;
+
+            // Feedforward and train in each iteration
+            nn.train(inputValues, [targetOutput]);
+
+            // Optionally, you can print the current error for monitoring
+            // if (i % logFrequency === 0) {
+            //   let currentError = nn.feedForward([input0, input1]);
+            //   console.log(`Iteration ${i}, Error: ${currentError.data[0][0]}`);
+            // }
+        }
+
+        // ==================== GAME LOGIC ====================
+
         const msBetweenFrames = 1000 / 60;
-        const screenDimensions = 640;
         const tileCount = 16;
         const tileDimensions = screenDimensions / tileCount;
         const canvas = document.getElementById("myCanvas");
         const ctx = canvas.getContext("2d");
+
+        function overlaps(a, b) {
+            return a.getRightEdge() >= b.getLeftEdge()
+                && b.getRightEdge() >= a.getLeftEdge();
+        }
 
         class Car {
             constructor(x, y) {
@@ -34,6 +366,14 @@
                 this.height = tileDimensions;
                 this.delay = -1;
                 this.setDelay();
+            }
+
+            getLeftEdge() {
+                return this.x;
+            }
+
+            getRightEdge() {
+                return this.x + this.width;
             }
 
             hasDelay() {
@@ -70,16 +410,82 @@
             constructor(x, y) {
                 this.x = x;
                 this.y = y;
+                this.startingY = y;
                 this.width = tileDimensions;
                 this.height = tileDimensions;
+                this.thoughtCadence = msBetweenFrames * 20;
+                this.timeUntilNextThought = 0;
+                this.gameStartDelay = 3000;
+            }
+
+            getLeftEdge() {
+                return this.x;
+            }
+
+            getRightEdge() {
+                return this.x + this.width;
             }
 
             update() {
-                if (Math.random() < 0.05) {
-                    this.moveUp();
+                if (this.gameStartDelay > 0) {
+                    this.gameStartDelay -= msBetweenFrames;
+                    return;
                 }
-                else if (Math.random() < 0.025) {
-                    this.moveDown();
+
+                if (this.timeUntilNextThought > 0) {
+                    this.timeUntilNextThought -= msBetweenFrames;
+                    return;
+                }
+                this.timeUntilNextThought = this.thoughtCadence;
+
+                const frog = this;
+
+                const nearbyCars = [
+                    cars.find(car => car.y == this.y - tileDimensions),     // above
+                    cars.find(car => car.y == this.y),                      // same row
+                    cars.find(car => car.y == this.y + tileDimensions)];    // below
+
+                function getDistance(car, inclination) {
+                    if (car == null) {
+                        return screenDimensions * inclination;
+                    }
+
+                    if (car.getRightEdge() < frog.getLeftEdge()) {
+                        return screenDimensions * inclination;
+                    }
+
+                    if (overlaps(car, frog)) {
+                        return -screenDimensions / 2;
+                    }
+
+                    return (car.getLeftEdge() - frog.getRightEdge()) * inclination;
+                }
+
+                const distances = [
+                    getDistance(nearbyCars[0], 1.5),    // above, with higher inclination
+                    getDistance(nearbyCars[1], 1),      // same row
+                    getDistance(nearbyCars[2], 0.25)    // below, with lower inclination
+                ];
+
+                const cutoffs = [
+                    0.3333333,
+                    0.6666667
+                ];
+
+                const result = nn.feedForward(distances).data[0];
+                console.log("DISTANCES: " + distances + ", RESULT: " + result);
+
+                if (result <= cutoffs[0]) {
+                    console.log("move up")
+                    this.moveUp();
+                } else if (result > cutoffs[0] && result <= cutoffs[1]) {
+                    console.log("do nothing")
+                    // no-op
+                } else {
+                    console.log("move down")
+                    if (this.y != this.startingY) {
+                        this.moveDown();
+                    }
                 }
             }
 
@@ -109,16 +515,33 @@
             }
         }
 
+        let gameOver = false;
         function gameLoop() {
+            if (gameOver) {
+                return;
+            }
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             frog.update();
             cars.forEach(car => car.update());
 
+            for (let i = 0; i < cars.length; i++) {
+                const car = cars[i];
+                if (frog.y === car.y
+                    && car.getLeftEdge() < frog.getRightEdge()
+                    && car.getRightEdge() > frog.getLeftEdge()) {
+
+                    console.log("GAME OVER");
+                    gameOver = true;
+                }
+            }
+
             frog.draw();
             cars.forEach(car => car.draw());
         }
+
         setInterval(gameLoop, msBetweenFrames);
     </script>
-  </body>
+</body>
 </html>
