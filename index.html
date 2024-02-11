@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <title>AI Frogger</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+      }
+      canvas {
+        background: #eee;
+        display: block;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="myCanvas" width="640" height="640"></canvas>
+    <script>
+        const screenDimensions = 640;
+        const tileDimensions = screenDimensions / 16;
+        const canvas = document.getElementById("myCanvas");
+        const ctx = canvas.getContext("2d");
+
+        class Car {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.speed = 3;
+                this.width = tileDimensions * 2;
+                this.height = tileDimensions;
+            }
+
+            update() {
+                this.x -= this.speed;
+                if (this.x <= -this.width) {
+                    this.x = screenDimensions;
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.rect(this.x, this.y, this.width, this.height);
+                ctx.fillStyle = "#FF0000";
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        class Frog {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = tileDimensions;
+                this.height = tileDimensions;
+            }
+
+            update() {
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.rect(this.x, this.y, this.width, this.height);
+                ctx.fillStyle = "#00FF00";
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        const frog = new Frog(screenDimensions / 2, canvas.height - tileDimensions);
+        const car = new Car(screenDimensions, screenDimensions / 2);
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            frog.update();
+            car.update();
+
+            frog.draw();
+            car.draw();
+        }
+        setInterval(gameLoop, 1000 / 60);
+    </script>
+  </body>
+</html>

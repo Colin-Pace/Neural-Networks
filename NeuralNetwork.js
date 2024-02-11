@@ -286,9 +286,9 @@ class NeuralNetwork {
   //   
   for (let i = 0; i < iterations; i++) {
     // Generate random input data and normalize
-    let input0 = Math.random() * 2;
-    let input1 = Math.random() * 2;
-    let input2 = Math.random() * 2;
+    let input0 = Math.random() * 320;
+    let input1 = Math.random() * 320;
+    let input2 = Math.random() * 320;
 
     const inclinationToGoUpward = 1.5;
     const inclinationAgainstGoingDownward = 0.25;
