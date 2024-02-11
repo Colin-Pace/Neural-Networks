@@ -275,7 +275,7 @@ class NeuralNetwork {
     }
   }
   
-  const inputs = 2;
+  const inputs = 3;
   const hidden = 50;
   const outputs = 1;
   const iterations = 10000;
@@ -286,14 +286,24 @@ class NeuralNetwork {
   //   
   for (let i = 0; i < iterations; i++) {
     // Generate random input data and normalize
-    let input0 = Math.floor(Math.random() * 2);
-    let input1 = Math.floor(Math.random() * 2);
+    let input0 = Math.random() * 2;
+    let input1 = Math.random() * 2;
+    let input2 = Math.random() * 2;
+
+    const inclinationToGoUpward = 1.5;
+    const inclinationAgainstGoingDownward = 0.25;
+    let inputValues = [
+        input0 * inclinationToGoUpward,
+        input1,
+        input2 * inclinationAgainstGoingDownward];
+    let maxValue = Math.max(...inputValues);
+    let indexOfMaxValue = inputValues.indexOf(maxValue);
 
     // Desired output
-    let targetOutput = input0 === input1 ? 0 : 1; // 0 for false, 1 for true (in an XOR gate)
+    let targetOutput = indexOfMaxValue / 2;
   
     // Feedforward and train in each iteration
-    nn.train([input0, input1], [targetOutput]);
+    nn.train(inputValues, [targetOutput]);
     
     // Optionally, you can print the current error for monitoring
     // if (i % logFrequency === 0) {
@@ -303,11 +313,9 @@ class NeuralNetwork {
   }
   
   // Test
-  console.log("0, 0 = " + nn.feedForward([0, 0]).data);
-  console.log("0, 0 = " + nn.feedForward([0, 0]).data);
-  console.log("0, 1 = " + nn.feedForward([0, 1]).data);
-  console.log("0, 1 = " + nn.feedForward([0, 1]).data);
-  console.log("1, 0 = " + nn.feedForward([1, 0]).data);
-  console.log("1, 0 = " + nn.feedForward([1, 0]).data);
-  console.log("1, 1 = " + nn.feedForward([1, 1]).data);
-  console.log("1, 1 = " + nn.feedForward([1, 1]).data);
+  console.log("0, 1, 2 = " + nn.feedForward([0, 1, 2]).data);
+  console.log("0, 2, 1 = " + nn.feedForward([0, 2, 1]).data);
+  console.log("l, 0, 2 = " + nn.feedForward([1, 0, 2]).data);
+  console.log("1, 2, 0 = " + nn.feedForward([1, 2, 0]).data);
+  console.log("2, 0, 1 = " + nn.feedForward([2, 0, 1]).data);
+  console.log("2, 1, 0 = " + nn.feedForward([2, 1, 0]).data);
