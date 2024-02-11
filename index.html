@@ -476,8 +476,9 @@
 
                 distances = distances.map(normalize);
 
-                const result = nn.feedForward(distances).data[0];
-                console.log("DISTANCES: " + distances + ", RESULT: " + result);
+                //const result = nn.feedForward(distances).data[0];
+                const maxValueIndex = distances.indexOf(distances.reduce((a, b) => Math.max(a, b)));
+                const result = maxValueIndex / 2;
 
                 if (result <= cutoffs[0]) {
                     console.log("move up")
