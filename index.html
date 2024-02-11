@@ -307,20 +307,12 @@
 
         const nn = new NeuralNetwork(inputs, hidden, outputs);
 
-        function lerp(a, b, t) {
-            return a + t * (b - a);
-        }
-
         //
         for (let i = 0; i < iterations; i++) {
-            // Generate random input data and normalize
-            //let input0 = Math.random() * screenDimensions * 1.5;
-            //let input1 = Math.random() * screenDimensions * 1.5;
-            //let input2 = Math.random() * screenDimensions * 1.5;
-
-            let input0 = lerp(-screenDimensions / 2, screenDimensions * 1.5, Math.random());
-            let input1 = lerp(-screenDimensions / 2, screenDimensions * 1.5, Math.random());
-            let input2 = lerp(-screenDimensions / 2, screenDimensions * 1.5, Math.random());
+            // Generate random input data
+            let input0 = Math.random();
+            let input1 = Math.random();
+            let input2 = Math.random();
 
             const inclinationToGoUpward = 1.5;
             const inclinationAgainstGoingDownward = 0.25;
@@ -446,22 +438,25 @@
                     cars.find(car => car.y == this.y + tileDimensions)];    // below
 
                 function getDistance(car, inclination) {
+                    // No car in the row.
                     if (car == null) {
                         return screenDimensions * inclination;
                     }
 
+                    // Car has passed by the frog.
                     if (car.getRightEdge() < frog.getLeftEdge()) {
                         return screenDimensions * inclination;
                     }
 
+                    // Car overlaps the frog.
                     if (overlaps(car, frog)) {
-                        return -screenDimensions / 2;
+                        return 0;
                     }
 
                     return (car.getLeftEdge() - frog.getRightEdge()) * inclination;
                 }
 
-                const distances = [
+                let distances = [
                     getDistance(nearbyCars[0], 1.5),    // above, with higher inclination
                     getDistance(nearbyCars[1], 1),      // same row
                     getDistance(nearbyCars[2], 0.25)    // below, with lower inclination
@@ -471,6 +466,15 @@
                     0.3333333,
                     0.6666667
                 ];
+
+                const clamp = (a, min = 0, max = 1) => Math.min(max, Math.max(min, a));
+                const inverseLerp = (x, y, a) => clamp((a - x) / (y - x));
+
+                function normalize(distance) {
+                    return inverseLerp(0, screenDimensions * 1.5, distance);
+                }
+
+                distances = distances.map(normalize);
 
                 const result = nn.feedForward(distances).data[0];
                 console.log("DISTANCES: " + distances + ", RESULT: " + result);
